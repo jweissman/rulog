@@ -1,6 +1,6 @@
 name: rulog
-summary: "TODO: Summary"
-description: "TODO: Description"
+summary: "logic programming for ruby"
+description: "framework for facts/predicate analysis in ruby"
 license: MIT
 authors: Joseph Weissman
 email: jweissman1986@gmail.com

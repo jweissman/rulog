@@ -8,13 +8,50 @@
 
 ## Description
 
-TODO: Description
+Logic programming in Ruby.
 
 ## Features
+
+   - Declare facts, relations and rules
+   - Query the database for solutions simple to expressions with variables
 
 ## Examples
 
     require 'rulog'
+
+    include Rulog
+    extend DSL
+
+    # tell the database facts with '!'
+    sunny! # => true
+
+    # query with '?'
+    sunny? # => true
+
+    # create relations
+    likes!(laura, bobby)
+    likes!(laura, james)
+    likes!(james, laura)
+    likes!(james, donna)
+    likes!(donna, mike)
+    likes!(audrey, bobby)
+    likes!(bobby, shelly)
+
+    likes?(laura, bobby)
+    # => true
+
+    # query with underscore placeholders
+    likes(laura, _who)
+    # => [{:_who=>bobby}, {:_who=>james}]
+
+    likes(_who, bobby)
+    # => [{:_who=>laura}, {:_who=>audrey}]
+
+    # construct rules with blocks returning arrays of clauses
+    friends! { |x,y| [ likes?(x,y), likes?(y,x) ] }
+
+    friends(_who, laura)
+    # [{:_who=>james}]
 
 ## Requirements
 
