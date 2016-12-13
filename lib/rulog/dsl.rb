@@ -38,7 +38,7 @@ module Rulog
       else
         if args.any?
           if Database.current.has_rule?(meth.to_s)
-            p [ :match_rule!, method: meth.to_s, args: args ]
+            # p [ :match_rule!, method: meth.to_s, args: args ]
             Database.current.match_rule meth.to_s, args
           else
             relation = Relation.named(meth.to_s)

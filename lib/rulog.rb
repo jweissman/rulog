@@ -114,4 +114,35 @@ module Rulog
       @args = args
     end
   end
+
+  def self.write(*args)
+    message = message_from(args)
+    @terminal ||= []
+    @terminal << message
+    puts message
+    true
+  end
+
+  def self.messages_written
+    @terminal ||= []
+  end
+
+  def self.reset!
+    @terminal = []
+    Database.current.clear!
+  end
+
+  private
+  def self.message_from(args)
+    msg = ""
+    args.map do |s|
+      if s.respond_to?(:name)
+        msg += s.name
+      else
+        msg += s
+      end
+    end
+    msg += "."
+    msg
+  end
 end

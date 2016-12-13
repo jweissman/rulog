@@ -42,12 +42,38 @@ RSpec.describe Rulog do
     expect( database.query( bob_likes_alice ) ).to be_truthy
     expect( database.query( alice_likes_bob ) ).to be_falsy
   end
+
+  it 'should match bound slots' do
+    database.insert( alice_likes_bob )
+    one = SimpleVariable.named('_one')
+    two = SimpleVariable.named('_two')
+
+    expect(database.match_bindable_objects([ alice, one, 1 ])).to eq([
+      [ alice, alice, 1 ],
+      [ alice, bob, 1 ]
+    ])
+
+    expect(database.match_bindable_objects([ one, two ])).to eq([
+      [ alice, alice ],
+      [ bob, alice ],
+      [ alice, bob ],
+      [ bob, bob ]
+    ])
+
+    expect(database.match_bindable_objects([ 1, one, two ])).to eq([
+      [ 1, alice, alice ],
+      [ 1, bob, alice ],
+      [ 1, alice, bob ],
+      [ 1, bob, bob ]
+    ])
+  end
 end
 
 RSpec.describe DSL do
   before(:each) do
-    Database.current.clear!
+    Rulog.reset! # clear db and output buffer
   end
+
   it 'should permit creating facts, relations and queries ad hoc' do
     extend DSL
 
@@ -135,7 +161,7 @@ RSpec.describe DSL do
 
     color!(orange)
     recoloring = country( _al, _fl, _ga, _tn, _ms )
-    expect( recoloring.first ).to eq({_al: red, _fl: blue, _ga: orange, _tn: blue, _ms: orange})
+    expect( recoloring.first ).to eq({_al: orange, _fl: blue, _ga: red, _tn: blue, _ms: red})
     expect( recoloring.count ).to eq(6)
   end
 
@@ -147,16 +173,17 @@ RSpec.describe DSL do
     expect( mortal(_who) ).to eq([{ _who: socrates }])
   end
 
-  it 'should solve recursive relational things' do
+  it 'should solve recursive relational problems' do
     extend DSL
     teacher!(socrates, plato)
     teacher!(cratylus, plato)
     teacher!(plato, aristotle)
+    teacher!(aristotle, alexander)
 
     expect( teacher(_who, plato) ).to eq([ {_who: socrates}, {_who: cratylus} ])
 
     disciple! { |x,y| [ teacher?(y,x) ] }
-    taught! { |x| [ disciple?(x,_w) ] }
+    taught!   { |x| [ disciple?(x,_w) ] }
 
     expect( taught?(socrates)).to eq(false)
 
@@ -168,7 +195,44 @@ RSpec.describe DSL do
     expect( follower(_who, socrates) ).to eq([{_who: plato}, {_who: aristotle}])
 
     # deriving these takes longer...
-    # expect( follower(aristotle, _who) ).to eq([{_who: socrates}, {_who: plato}, {_who: cratylus}])
-    # expect( follower?(cratylus, aristotle) ).to eq(false)
+    expect( follower(aristotle, _who) ).to eq([{_who: socrates}, {_who: plato}, {_who: cratylus}])
+    expect( follower(_who, aristotle) ).to eq([{_who: alexander}])
+    expect( follower?(cratylus, aristotle) ).to eq(false)
+  end
+
+  it 'should solve towers of hanoi' do
+    extend DSL
+
+    move_one! { |x,y| [ Rulog.write("Move top disk from ", x, " to ", y) ] }
+
+    move! do |n, x, y, z|
+      if n > 1
+        [
+          move(n-1, x, z, y),
+          move_one(x,y),
+          move(n-1, z, y, x)
+        ]
+      else
+        [
+          move_one(x,y)
+        ]
+      end
+    end
+
+    peg!(left)
+    peg!(center)
+    peg!(right)
+
+    expect( move?(3, left, center, right) ).to eq(true)
+    expect( Rulog.messages_written.count ).to eq(7)
+    expect( Rulog.messages_written ).to eq(
+      ["Move top disk from left to center.",
+       "Move top disk from left to right.",
+       "Move top disk from center to right.",
+       "Move top disk from left to center.",
+       "Move top disk from right to left.",
+       "Move top disk from right to center.",
+       "Move top disk from left to center."]
+    )
   end
 end

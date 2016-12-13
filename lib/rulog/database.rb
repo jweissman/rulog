@@ -37,20 +37,22 @@ module Rulog
     end
 
     def query_rule(rule_name, args)
-      p [ :query_rule, rule: rule_name, args: args ]
-      rule = detect_rule(rule_name)
-      if args.any? { |arg| arg.is_a?(SimpleVariable) }
-        OpenQuery.new(rule, args)
-      else
-        rule_matches?(rule, args)
-      end
+      # p [ :query_rule, rule: rule_name, args: args ]
+      (
+        rule = detect_rule(rule_name)
+        if args.any? { |arg| arg.is_a?(SimpleVariable) }
+          OpenQuery.new(rule, args)
+        else
+          rule_matches?(rule, args)
+        end
+      )
     end
 
-    MAX_DEPTH = 16
+    MAX_DEPTH = 4
 
     # need to query the clause as a 'whole' to pickup simple variables embedded inside...
     def rule_matches?(rule, objs, depth: MAX_DEPTH)
-      p [ :rule_matches?, rule: rule.name, objs: objs, depth: depth ]
+      # p [ :rule_matches?, rule: rule.name, objs: objs, depth: depth ]
       return false if depth <= 0
       rule.clauses.each do |clause|
         resolved_clauses = clause.call(*objs)
@@ -63,10 +65,10 @@ module Rulog
           end
 
           if open_results.uniq.length == 1
-            # binding.pry
             return true if !!(open_results.uniq.first)
           end
         else
+          # binding.pry
           return true if resolved_clauses.all?
         end
       end
@@ -75,23 +77,25 @@ module Rulog
     end
 
     def match_rule(rule_name, args, depth: MAX_DEPTH)
-      p [ :match_rule, rule: rule_name, args: args, depth: depth ]
+      # p [ :match_rule, rule: rule_name, args: args, depth: depth ]
       return false if depth <= 0
-      @rule_matches ||= {}
-      @rule_matches[rule_name] ||= {}
-      @rule_matches[rule_name][args] ||= (
+      # @rule_matches ||= {}
+      # @rule_matches[rule_name] ||= {}
+      # @rule_matches[rule_name][args] ||=
+      (
 
         rule = detect_rule(rule_name)
+        # args analysis?
+        # we at least need to detect that one of these is a fixnum...
+        # binding.pry
 
-        matches = object_combinations(args.length).flat_map do |objs|
+        matches = match_bindable_objects(args).flat_map do |objs|
           # check objs against args
           objs_match_args = args.zip(objs).all? do |arg, obj|
-            # begin
-            arg.is_a?(SimpleVariable) || (arg.respond_to?(:name) && obj.name == arg.name)
-            # rescue => ex
-            #   binding.pry
-            # end
+            arg.is_a?(SimpleObject) || arg.is_a?(Fixnum) || arg.is_a?(SimpleVariable) || (arg.respond_to?(:name) && obj.name == arg.name)
           end
+
+          # binding.pry
 
           if objs_match_args && rule_matches?(rule, objs, depth: depth-1)
             # okay, this is a valid application of this rule! hand back var args
@@ -102,6 +106,7 @@ module Rulog
             end
           end
         end.compact.uniq
+
 
         if matches.any? then matches else false end
       )
@@ -126,6 +131,24 @@ module Rulog
     def detect_rule(rule_name)
       @rules ||= {}
       @rules[rule_name]
+    end
+
+    def match_bindable_objects(slots)
+      # okay, we need to narrow slots down to
+      # just those with simple variables?
+      free_slots = slots.select { |slot| slot.is_a?(SimpleVariable) }
+      var_combos = object_combinations(free_slots.length)
+
+      var_combos.map do |vars|
+        # insert vars into open slots...
+        slots.map do |slot|
+          if slot.is_a?(SimpleVariable)
+            vars.pop
+          else
+            slot
+          end
+        end
+      end
     end
 
     def object_combinations(n=1)
