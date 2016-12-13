@@ -45,6 +45,9 @@ RSpec.describe Rulog do
 end
 
 RSpec.describe DSL do
+  before(:each) do
+    Database.current.clear!
+  end
   it 'should permit creating facts, relations and queries ad hoc' do
     extend DSL
 
@@ -78,14 +81,17 @@ RSpec.describe DSL do
 
     likes!(mary, james)
     likes!(james, mary)
+    likes!(mary, alice)
 
     friends! { |x,y| [ likes?(x,y), likes?(y,x) ] }
 
     expect( friends?(mary, james) ).to be_truthy
-    expect( friends?(mary, tom) ).to be_falsy
+    expect( friends?(mary, alice) ).to be_falsy
+    expect( friends?(james, tom) ).to be_falsy
 
     expect( friends(mary, _who) ).to eq([{_who: james}])
     expect( friends(james, _who) ).to eq([{_who: mary}])
+    expect( friends(alice, _who) ).to eq(false)
   end
 
   it 'should permit inferences from rules' do
@@ -103,5 +109,66 @@ RSpec.describe DSL do
 
     expect( grandparent(alice, _who) ).to eq([{_who: john}, {_who: alberta}])
     expect( grandparent?(alice, john) ).to be_truthy
+  end
+
+  it 'should solve coloring problems' do
+    extend DSL
+    color!(red)
+    color!(blue)
+
+    neighbors! { |x,y| [ color(x), color(y), x != y ] }
+
+    country! do |al, fl, ga, tn, ms|
+      [
+        neighbors?(al, fl),
+        neighbors?(al, ga),
+        neighbors?(al, tn),
+        neighbors?(al, ms),
+        neighbors?(fl, ga),
+        neighbors?(tn, ga),
+        neighbors?(tn, ms),
+      ]
+    end
+
+    coloring = country( _al, _fl, _ga, _tn, _ms )
+    expect( coloring ).to eq(false)
+
+    color!(orange)
+    recoloring = country( _al, _fl, _ga, _tn, _ms )
+    expect( recoloring.first ).to eq({_al: red, _fl: blue, _ga: orange, _tn: blue, _ms: orange})
+    expect( recoloring.count ).to eq(6)
+  end
+
+  it 'should solve syllogisms' do
+    extend DSL
+    human! socrates
+    mortal! { |x| [ human?(x) ] }
+    expect( mortal?(socrates) ).to eq(true)
+    expect( mortal(_who) ).to eq([{ _who: socrates }])
+  end
+
+  it 'should solve recursive relational things' do
+    extend DSL
+    teacher!(socrates, plato)
+    teacher!(cratylus, plato)
+    teacher!(plato, aristotle)
+
+    expect( teacher(_who, plato) ).to eq([ {_who: socrates}, {_who: cratylus} ])
+
+    disciple! { |x,y| [ teacher?(y,x) ] }
+    taught! { |x| [ disciple?(x,_w) ] }
+
+    expect( taught?(socrates)).to eq(false)
+
+    follower! { |x,y| [ disciple?(x,y) ] }
+    follower! { |x,y| [ disciple?(x,_z),
+                        follower?(_z,y) ] }
+
+    expect( follower?(aristotle, socrates) ).to eq(true)
+    expect( follower(_who, socrates) ).to eq([{_who: plato}, {_who: aristotle}])
+
+    # deriving these takes longer...
+    # expect( follower(aristotle, _who) ).to eq([{_who: socrates}, {_who: plato}, {_who: cratylus}])
+    # expect( follower?(cratylus, aristotle) ).to eq(false)
   end
 end
