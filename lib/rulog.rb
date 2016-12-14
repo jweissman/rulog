@@ -89,7 +89,7 @@ module Rulog
     end
 
     def name
-      "#{@relation.name}(#{@arguments.flatten.map(&:name).join(', ')})"
+      "#{@relation.name}(#{@arguments.flatten.join(', ')})"
     end
   end
 
@@ -108,6 +108,21 @@ module Rulog
   end
 
   class OpenQuery
+  end
+
+  class OpenFactQuery < OpenQuery
+    attr_reader :fact, :negated # relation, :args
+    def initialize(fact, negated: false) #relation, args)
+      @fact = fact
+      @negated = negated
+    end
+
+    def ~
+      self.class.new(@fact, negated: !@negated)
+    end
+  end
+
+  class OpenRuleQuery < OpenQuery
     attr_reader :rule, :args
     def initialize(rule, args)
       @rule = rule

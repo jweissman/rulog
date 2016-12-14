@@ -53,15 +53,28 @@ module Rulog
             var
           else
             rule = Database.current.detect_rule(meth.to_s)
-            return rule if rule
+            if rule
+              if block_given?
+                # we are being given a new rule defn
+                Database.current.learn meth.to_s, &blk
+              else
+                return rule
+              end
+            end
 
             # see if we may be referening a relation?
             relation = Database.current.relations.detect { |rel| rel.name == meth.to_s }
             return relation if relation
 
-            # assume we're building a simple object
-            object = SimpleObject.named(meth.to_s)
-            object
+            if block_given?
+              # definitely building a rule
+              Database.current.learn meth.to_s, &blk
+              true
+            else
+              # assume we're building a simple object
+              object = SimpleObject.named(meth.to_s)
+              object
+            end
           end
         end
       end
