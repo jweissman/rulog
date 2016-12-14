@@ -4,7 +4,7 @@
 * [Documentation](http://rubydoc.info/gems/rulog/frames)
 * [Email](mailto:jweissman1986 at gmail.com)
 
-[![Code Climate GPA](https://codeclimate.com/github//rulog/badges/gpa.svg)](https://codeclimate.com/github//rulog)
+[![Code Climate GPA](https://codeclimate.com/github/jweissman/rulog/badges/gpa.svg)](https://codeclimate.com/github/jweissman/rulog)
 
 ## Description
 
