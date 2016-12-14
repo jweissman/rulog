@@ -13,7 +13,7 @@ Logic programming in Ruby.
 ## Features
 
    - Declare facts, relations and rules
-   - Query the database for solutions simple to expressions with variables
+   - Query the database for simple solutions to expressions with variables
 
 ## Examples
 
@@ -41,16 +41,16 @@ Logic programming in Ruby.
     # => true
 
     # query with underscore placeholders
-    likes(laura, _who)
+    likes(laura, _who).solve!
     # => [{:_who=>bobby}, {:_who=>james}]
 
-    likes(_who, bobby)
+    likes(_who, bobby).solve!
     # => [{:_who=>laura}, {:_who=>audrey}]
 
     # construct rules with blocks returning arrays of clauses
     friends! { |x,y| [ likes?(x,y), likes?(y,x) ] }
 
-    friends(_who, laura)
+    friends(_who, laura).solve!
     # [{:_who=>james}]
 
 ## Requirements

@@ -4,7 +4,6 @@ module Rulog
       if meth.to_s.end_with?('!')
         if block_given? # we have a rule...
           rule_name = meth.to_s.chomp('!')
-          # rule = Rule.new(, &blk)
           Database.current.learn rule_name, &blk
           true
         else
@@ -18,7 +17,7 @@ module Rulog
                  end
 
           Database.current.insert fact
-          true
+          fact
         end
       elsif meth.to_s.end_with?('?')
         meth_name = meth.to_s.chomp('?')
@@ -38,14 +37,13 @@ module Rulog
       else
         if args.any?
           if Database.current.has_rule?(meth.to_s)
-            # p [ :match_rule!, method: meth.to_s, args: args ]
-            Database.current.match_rule meth.to_s, args
+            rule = Database.current.detect_rule(meth.to_s)
+            OpenRuleQuery.new(rule, args)
           else
             relation = Relation.named(meth.to_s)
             fact = RelationalFact.new(relation, arguments: args)
 
-            # assume we're being asked to match a fact here
-            Database.current.match fact
+            fact
           end
         else
           if meth.to_s.match(/^_/)
@@ -64,6 +62,7 @@ module Rulog
 
             # see if we may be referening a relation?
             relation = Database.current.relations.detect { |rel| rel.name == meth.to_s }
+            # are we trying to *find*/instantiate a specific relational fact??
             return relation if relation
 
             if block_given?

@@ -67,29 +67,62 @@ module Rulog
 
     def objects
       @arguments.select do |arg|
-        arg.is_a?(SimpleObject)
+        arg.is_a?(SimpleObject) || arg.is_a?(Fixnum)
       end
     end
 
     def variables
-      @arguments.select do |arg|
-        arg.is_a?(SimpleVariable)
-      end
+      @arguments.flat_map do |arg|
+        if arg.is_a?(SimpleVariable)
+          [arg]
+        elsif arg.is_a?(RelationalFact)
+          arg.variables
+        else
+          []
+        end
+      end #.compact
     end
 
     def substitute(mapping)
       subbed_args = @arguments.map do |arg| #variable, object|
-        if mapping.has_key?(arg.name.to_sym)
+        # binding.pry
+        if arg.respond_to?(:name) && mapping.has_key?(arg.name.to_sym)
           mapping[arg.name.to_sym]
         else
-          arg
+          if arg.is_a?(RelationalFact)
+            arg.substitute(mapping)
+          else
+            arg
+          end
         end
       end
       RelationalFact.new(@relation, arguments: subbed_args)
     end
 
+    def solve!
+      Database.current.match(self)
+    end
+
     def name
-      "#{@relation.name}(#{@arguments.flatten.join(', ')})"
+      "#{@relation.name}(#{humanize_args.join(', ')})"
+    end
+
+    def to_s
+      name
+    end
+
+    def inspect
+      to_s
+    end
+
+    def humanize_args
+      @arguments.map do |arg|
+        if arg.respond_to?(:name)
+          arg.name
+        else
+          arg.to_s
+        end
+      end
     end
   end
 
@@ -120,6 +153,10 @@ module Rulog
     def ~
       self.class.new(@fact, negated: !@negated)
     end
+
+    def solve!
+      Database.current.match(@fact, complement: @negated)
+    end
   end
 
   class OpenRuleQuery < OpenQuery
@@ -127,6 +164,10 @@ module Rulog
     def initialize(rule, args)
       @rule = rule
       @args = args
+    end
+
+    def solve!
+      Database.current.match_rule(@rule.name, @args)
     end
   end
 
@@ -157,7 +198,6 @@ module Rulog
         msg += s
       end
     end
-    msg += "."
     msg
   end
 end
